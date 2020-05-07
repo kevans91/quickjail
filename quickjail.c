@@ -106,11 +106,13 @@ quickjail(int argc, char *argv[], const char *name, const char *path)
 		}
 
 		EV_SET(&kev, fdp, EVFILT_PROCDESC, EV_ADD, NOTE_EXIT, 0, NULL);
-		rv = kevent(kq, &kev, 1, &kev, 1, NULL);
-		if (rv == -1) {
-			pdkill(fdp, SIGKILL);
-			err(1, "kevent");
+		while ((rv = kevent(kq, &kev, 1, &kev, 1, NULL)) == -1 &&
+		    errno == EINTR) {
+			/* Meh. */
 		}
+
+		if (rv == -1)
+			err(1, "kevent");
 
 		status = WEXITSTATUS(kev.data);
 		return (status);
