@@ -26,6 +26,7 @@
  */
 
 #include <sys/param.h>
+#include <sys/capsicum.h>
 #include <sys/event.h>
 #include <sys/jail.h>
 #include <sys/procdesc.h>
@@ -57,6 +58,7 @@ quickjail(int argc, char *argv[], const char *name, const char *path)
 	struct kevent kev;
 	pid_t pid, wpid;
 	int fdp, kq, nparams, rv, status;
+	cap_rights_t rights;
 
 	pid = pdfork(&fdp, 0);
 	if (pid == -1)
@@ -82,6 +84,12 @@ quickjail(int argc, char *argv[], const char *name, const char *path)
 		execvp(argv[0], __DECONST(char *const*, argv));
 		err(1, "execvp");
 	} else {
+		if (caph_rights_limit(fdp,
+		    cap_rights_init(&rights, CAP_PDKILL, CAP_EVENT)) == -1) {
+			pdkill(fdp, SIGKILL);
+			err(1, "caph_rights_limit(fdp)");
+		}
+
 		/*
 		 * The following cases, up until we enter capability mode, will opt to
 		 * try killing the child immediately upon error.  I'd tend to prefer the
@@ -99,14 +107,25 @@ quickjail(int argc, char *argv[], const char *name, const char *path)
 			err(1, "caph_limit_stdio");
 		}
 
-		/* Parent, immediately enter capability mode. */
 		if (caph_enter() == -1) {
 			pdkill(fdp, SIGKILL);
 			err(1, "caph_enter");
 		}
 
 		EV_SET(&kev, fdp, EVFILT_PROCDESC, EV_ADD, NOTE_EXIT, 0, NULL);
-		while ((rv = kevent(kq, &kev, 1, &kev, 1, NULL)) == -1 &&
+		rv = kevent(kq, &kev, 1, NULL, 0, NULL);
+		if (rv == -1) {
+			pdkill(fdp, SIGKILL);
+			err(1, "kevent");
+		}
+
+		if (caph_rights_limit(kq,
+		    cap_rights_init(&rights, CAP_KQUEUE_EVENT)) == -1) {
+			pdkill(fdp, SIGKILL);
+			err(1, "caph_rights_limit(kq)");
+		}
+
+		while ((rv = kevent(kq, NULL, 0, &kev, 1, NULL)) == -1 &&
 		    errno == EINTR) {
 			/* Meh. */
 		}
