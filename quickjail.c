@@ -52,11 +52,11 @@ usage(void)
 }
 
 static int
-quickjail(int argc, char *argv[], const char *name, const char *path)
+quickjail(char *argv[], const char *name, const char *path)
 {
 	struct jailparam params[2];
 	struct kevent kev;
-	pid_t pid, wpid;
+	pid_t pid;
 	int fdp, kq, nparams, rv, status;
 	cap_rights_t rights;
 
@@ -181,5 +181,5 @@ main(int argc, char *argv[])
 		usage();
 	}
 
-	return (quickjail(argc, argv, name, path));
+	return (quickjail(argv, name, path));
 }
