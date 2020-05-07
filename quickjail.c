@@ -102,6 +102,12 @@ quickjail(int argc, char *argv[], const char *name, const char *path)
 			err(1, "kqueue");
 		}
 
+		/*
+		 * We don't actually need stdin at all, so just go ahead and close it.
+		 * caph_limit_stdio will still attempt to limit it, but it intentionally
+		 * ignores EBADF.
+		 */
+		close(STDIN_FILENO);
 		if (caph_limit_stdio() == -1) {
 			pdkill(fdp, SIGKILL);
 			err(1, "caph_limit_stdio");
