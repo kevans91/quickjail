@@ -82,10 +82,22 @@ quickjail(int argc, char *argv[], const char *name, const char *path)
 		execvp(argv[0], __DECONST(char *const*, argv));
 		err(1, "execvp");
 	} else {
+		/*
+		 * The following cases, up until we enter capability mode, will opt to
+		 * try killing the child immediately upon error.  I'd tend to prefer the
+		 * jail didn't continue to exist if we hit some error case here before
+		 * we managed to enter capability mode.
+		 */
 		kq = kqueue();
+		if (kq == -1) {
+			pdkill(fdp, SIGKILL);
+			err(1, "kqueue");
+		}
 
-		if (caph_limit_stdio() == -1)
+		if (caph_limit_stdio() == -1) {
+			pdkill(fdp, SIGKILL);
 			err(1, "caph_limit_stdio");
+		}
 
 		/* Parent, immediately enter capability mode. */
 		if (caph_enter() == -1) {
