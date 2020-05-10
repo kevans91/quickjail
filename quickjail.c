@@ -41,8 +41,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define	DEFAULT_PATH "/"
-
 static void
 usage(void)
 {
@@ -65,9 +63,7 @@ quickjail(char *argv[], struct jailparam *params, int nparams, const char *path)
 
 	if (pid == 0) {
 		/* Child */
-		if (path == NULL)
-			path = DEFAULT_PATH;
-		if (strcmp(path, ".") != 0 && chdir(path) == -1)
+		if (path != NULL && strcmp(path, ".") != 0 && chdir(path) == -1)
 			err(1, "chdir");
 
 		rv = jailparam_set(params, nparams, JAIL_CREATE | JAIL_ATTACH);

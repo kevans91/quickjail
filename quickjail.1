@@ -58,15 +58,14 @@ gone.
 For some use-cases, this behavior is not ideal as it may potentially leave the
 jail behind depending on how the child command exits.
 .Pp
-If no
+If a
 .Ar path
 argument is specified, then
 .Nm
-will use
-.Pa /
-as the default path, and
+will
 .Xr chdir 2
-accordingly.
+to this path before creating the jail with the same
+.Ar path .
 .Sh EXAMPLES
 .Nm
 .Ar path=/mnt
