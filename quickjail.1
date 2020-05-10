@@ -57,6 +57,16 @@ will mark the jail as persistent and remove the jail when the child process is
 gone.
 For some use-cases, this behavior is not ideal as it may potentially leave the
 jail behind depending on how the child command exits.
+.Pp
+If no
+.Ar path
+argument is specified, then
+.Nm
+will use
+.Pa /
+as the default path, and
+.Xr chdir 2
+accordingly.
 .Sh EXAMPLES
 .Nm
 .Ar path=/mnt
