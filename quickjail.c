@@ -47,17 +47,16 @@ static void
 usage(void)
 {
 
-	fprintf(stderr, "usage: quickjail [-n name] [-p path] command ...\n");
+	fprintf(stderr, "usage: quickjail [param=value ...] command=command ...\n");
 	exit(1);
 }
 
 static int
-quickjail(char *argv[], const char *name, const char *path)
+quickjail(char *argv[], struct jailparam *params, int nparams, const char *path)
 {
-	struct jailparam params[2];
 	struct kevent kev;
 	pid_t pid;
-	int fdp, kq, nparams, rv, status;
+	int fdp, kq, rv, status;
 	cap_rights_t rights;
 
 	pid = pdfork(&fdp, 0);
@@ -66,16 +65,10 @@ quickjail(char *argv[], const char *name, const char *path)
 
 	if (pid == 0) {
 		/* Child */
-		nparams = 1;
+		if (path == NULL)
+			path = DEFAULT_PATH;
 		if (strcmp(path, ".") != 0 && chdir(path) == -1)
 			err(1, "chdir");
-		jailparam_init(&params[0], "path");
-		jailparam_import(&params[0], ".");
-		if (name != NULL) {
-			++nparams;
-			jailparam_init(&params[1], "name");
-			jailparam_import(&params[1], name);
-		}
 
 		rv = jailparam_set(params, nparams, JAIL_CREATE | JAIL_ATTACH);
 		if (rv < 0)
@@ -147,39 +140,79 @@ quickjail(char *argv[], const char *name, const char *path)
 int
 main(int argc, char *argv[])
 {
-	int ch;
-	const char *name = NULL;
-	const char *path = DEFAULT_PATH;
+	int nparams, paramsz;
+	char *curarg, *name, *path, *val;
+	struct jailparam jparams[2], *params;
 
 	if (argc < 2) {
 		usage();
 	}
 
-	while ((ch = getopt(argc, argv, "n:p:")) != -1) {
-		switch (ch) {
-		case 'n':
-			name = optarg;
-			break;
-		case 'p':
-			path = optarg;
-			if (*path == '\0') {
-				fprintf(stderr, "path must not be empty.\n");
-				usage();
-			}
-			break;
-		case '?':
-		default:
+	argc--;
+	argv++;
+	paramsz = nitems(jparams);
+	params = jparams;
+	nparams = 0;
+	path = NULL;
+	while (argc > 0) {
+		name = curarg = argv[0];
+		if ((val = strchr(curarg, '=')) == NULL) {
+			fprintf(stderr, "malformed setting, missing '=': %s\n", curarg);
 			usage();
 		}
-	}
 
-	argc -= optind;
-	argv += optind;
+		*val++ = '\0';
+		/* Once we've hit command, halt; the rest goes to execvp().*/
+		if (strcmp(name, "command") == 0) {
+			if (*val == '\0') {
+				fprintf(stderr, "command must not be empty\n");
+				usage();
+			}
+			argv[0] = val;
+			break;
+		}
+
+		if (strcmp(name, "path") == 0)
+			path = val;
+
+		if (nparams == paramsz) {
+			struct jailparam *newparams;
+
+			paramsz *= 2;
+			newparams = calloc(paramsz, sizeof(*newparams));
+			if (newparams == NULL) {
+				fprintf(stderr, "out of memory\n");
+				return (1);
+			}
+
+			memcpy(newparams, params, nparams * sizeof(*params));
+			if (params != jparams)
+				free(params);
+			params = newparams;
+		}
+
+		if (jailparam_init(&params[nparams], name) != 0) {
+			if (*jail_errmsg != '\0') {
+				fprintf(stderr, "jail error: %s\n", jail_errmsg);
+				return (1);
+			}
+
+			fprintf(stderr, "invalid jail parameter: %s\n", name);
+			return (1);
+		}
+
+		if (jailparam_import(&params[nparams++], val) != 0) {
+			fprintf(stderr, "jail error: %s\n", jail_errmsg);
+			return (1);
+		}
+		argc--;
+		argv++;
+	}
 
 	if (argc == 0) {
 		fprintf(stderr, "missing command\n");
 		usage();
 	}
 
-	return (quickjail(argv, name, path));
+	return (quickjail(argv, params, nparams, path));
 }
