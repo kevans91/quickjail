@@ -41,6 +41,29 @@
 #include <string.h>
 #include <unistd.h>
 
+/* These can go away when stable/11 goes EoL in 2021. */
+#if __FreeBSD_version < 1200000
+static __inline int
+caph_enter(void)
+{
+
+	if (cap_enter() < 0 && errno != ENOSYS)
+		return (-1);
+
+	return (0);
+}
+
+static __inline int
+caph_rights_limit(int fd, const cap_rights_t *rights)
+{
+
+	if (cap_rights_limit(fd, rights) < 0 && errno != ENOSYS)
+		return (-1);
+
+	return (0);
+}
+#endif
+
 static void
 usage(void)
 {
