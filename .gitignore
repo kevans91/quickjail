@@ -1,4 +1,5 @@
 .depend*
+.*.swp
 *.o
 *.core
 *.debug
