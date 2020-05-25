@@ -68,7 +68,7 @@ static void
 usage(void)
 {
 
-	fprintf(stderr, "usage: quickjail [param=value ...] command=command ...\n");
+	fprintf(stderr, "usage: quickjail [-c] [param=value ...] command=command ...\n");
 	exit(1);
 }
 
@@ -167,8 +167,17 @@ main(int argc, char *argv[])
 		usage();
 	}
 
-	argc--;
-	argv++;
+	/*
+	 * quickjail allows an optional -c as a first argument, to maintain an
+	 * interface compatible with jail(8) for creatinf a jail.
+	 */
+	if (strcmp(argv[1], "-c") == 0) {
+		argc -= 2;
+		argv += 2;
+	} else {
+		argc--;
+		argv++;
+	}
 	paramsz = nitems(jparams);
 	params = jparams;
 	nparams = 0;
