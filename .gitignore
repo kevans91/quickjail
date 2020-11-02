@@ -4,5 +4,6 @@
 *.core
 *.debug
 *.full
+*.1
+*.gz
 quickjail
-quickjail.1.gz
