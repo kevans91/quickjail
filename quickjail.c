@@ -156,8 +156,8 @@ quickjail(char *argv[], struct jailparam *params, int nparams, const char *path)
 	}
 }
 
-int
-main(int argc, char *argv[])
+static int
+quickjail_main(int argc, char *argv[])
 {
 	int nparams, paramsz;
 	char *curarg, *name, *path, *val;
@@ -243,4 +243,11 @@ main(int argc, char *argv[])
 	}
 
 	return (quickjail(argv, params, nparams, path));
+}
+
+int
+main(int argc, char *argv[])
+{
+
+	return (quickjail_main(argc, argv));
 }
