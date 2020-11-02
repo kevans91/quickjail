@@ -169,7 +169,7 @@ main(int argc, char *argv[])
 
 	/*
 	 * quickjail allows an optional -c as a first argument, to maintain an
-	 * interface compatible with jail(8) for creatinf a jail.
+	 * interface compatible with jail(8) for creating a jail.
 	 */
 	if (strcmp(argv[1], "-c") == 0) {
 		argc -= 2;
