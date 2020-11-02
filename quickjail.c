@@ -25,6 +25,8 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/cdefs.h>
+
 #include <sys/param.h>
 #include <sys/capsicum.h>
 #include <sys/event.h>
@@ -35,11 +37,23 @@
 #include <capsicum_helpers.h>
 #include <err.h>
 #include <jail.h>
+#include <paths.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#ifndef QUICKSHELL_DEFAULT
+#define	QUICKSHELL_DEFAULT	_PATH_BSHELL
+#endif
+
+#ifndef QUICKSHELL_SHELLENV
+#define	QUICKSHELL_SHELLENV	"QUICKSHELL"
+#endif
+
+_Static_assert(sizeof(QUICKSHELL_DEFAULT) > 1,
+    "QUICKSHELL_DEFAULT must not be empty.");
 
 /* These can go away when stable/11 goes EoL in 2021. */
 #if __FreeBSD_version < 1200000
@@ -69,6 +83,14 @@ usage(void)
 {
 
 	fprintf(stderr, "usage: quickjail [-c] [param=value ...] command=command ...\n");
+	exit(1);
+}
+
+static void
+quickshell_usage(void)
+{
+
+	fprintf(stderr, "usage: quickshell [-s] path\n");
 	exit(1);
 }
 
@@ -245,9 +267,62 @@ quickjail_main(int argc, char *argv[])
 	return (quickjail(argv, params, nparams, path));
 }
 
+static int
+quickshell_main(int argc, char *argv[])
+{
+	struct jailparam params[1];
+	char *nargv[2] = {NULL, NULL};
+	const char *path, *shellenv;
+	char *shell;
+
+	if (argc < 2 || argc > 3)
+		quickshell_usage();
+
+	if (argc > 2) {
+		if (strcmp(argv[1], "-s") != 0)
+			quickshell_usage();
+		shellenv = "SHELL";
+	} else {
+		shellenv = QUICKSHELL_SHELLENV;
+	}
+
+	shell = getenv(shellenv);
+	if (shell != NULL && *shell == '\0') {
+		fprintf(stderr, "shell provided by '%s' was empty\n",
+		    shellenv);
+	} else if (shell == NULL) {
+		shell = QUICKSHELL_DEFAULT;
+	}
+
+	setenv("SHELL", shell, 1);
+	nargv[0] = shell;
+	path = argv[argc - 1];
+
+	if (jailparam_init(params, "path") != 0) {
+		if (*jail_errmsg != '\0') {
+			fprintf(stderr, "jail error: %s\n", jail_errmsg);
+			return (1);
+		}
+
+		fprintf(stderr, "jail error: unknown\n");
+		return (1);
+	}
+
+	if (jailparam_import(params, path) != 0) {
+		fprintf(stderr, "jail error: %s\n", jail_errmsg);
+		return (1);
+	}
+
+	return (quickjail(nargv, params, 1, path));
+}
+
 int
 main(int argc, char *argv[])
 {
+	const char *name;
 
+	name = getprogname();
+	if (strcmp(name, "quickshell") == 0)
+		return (quickshell_main(argc, argv));
 	return (quickjail_main(argc, argv));
 }

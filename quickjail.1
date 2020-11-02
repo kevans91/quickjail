@@ -28,13 +28,17 @@
 .Dt QUICKJAIL 1
 .Os
 .Sh NAME
-.Nm quickjail
+.Nm quickjail ,
+.Nm quickshell
 .Nd Utility to spawn transient single-command jails
 .Sh SYNOPSIS
 .Nm
 .Oo Fl c Oc
 .Oo param Ns = Ns Ar value ... Oc
 .Ar command Ns = Ns Ar command ...
+.Nm quickshell
+.Oo Fl s Oc
+.Ar path
 .Sh DESCRIPTION
 The
 .Nm
@@ -61,7 +65,9 @@ jail behind depending on how the child command exits.
 .Pp
 If a
 .Ar path
-argument is specified, then
+param is specified to
+.Nm ,
+then
 .Nm
 will
 .Xr chdir 2
@@ -80,6 +86,34 @@ to maintain an interface compatible with
 .Xr jail 8
 for the purposes of other tools, like
 .Xr bectl 8 .
+.Pp
+The
+.Nm quickshell
+command is a simplified interface to
+.Nm
+specifically for running a shell in the alien
+.Ar path .
+It defaults to
+.Xr sh 1 ,
+but that may be overridden by the
+.Ev QUICKSHELL
+environment variable.
+.Pp
+If the
+.Fl s
+argument is supplied to
+.Nm quickshell ,
+then it will use the
+.Ev SHELL
+environment variable instead of
+.Ev QUICKSHELL .
+.Pp
+.Nm quickshell
+explicitly does not use the user's current shell because it is assumed that the
+.Ar path
+we are creating a jail at does not have the user's current shell.
+This is the common case for the author of
+.Nm quickshell .
 .Sh EXAMPLES
 .Nm
 .Ar path=/mnt
@@ -89,6 +123,9 @@ for the purposes of other tools, like
 .Ar name=qemu0
 .Ar path=/mnt
 .Ar command=/bin/sh
+.Pp
+.Nm quickshell
+.Ar /mnt
 .Sh SEE ALSO
 .Xr jail 8
 .Sh HISTORY
