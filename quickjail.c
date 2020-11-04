@@ -222,8 +222,14 @@ quickjail_main(int argc, char *argv[])
 			break;
 		}
 
-		if (strcmp(name, "path") == 0)
-			path = val;
+		if (strcmp(name, "path") == 0) {
+			/* It should likely be an error to specify path multiple times. */
+			free(path);
+			if ((path = realpath(val, NULL)) == NULL) {
+				fprintf(stderr, "realpath failed\n");
+				return (1);
+			}
+		}
 
 		if (nparams == paramsz) {
 			struct jailparam *newparams;
@@ -296,7 +302,10 @@ quickshell_main(int argc, char *argv[])
 
 	setenv("SHELL", shell, 1);
 	nargv[0] = shell;
-	path = argv[argc - 1];
+	if ((path = realpath(argv[argc - 1], NULL)) == NULL) {
+		fprintf(stderr, "realpath failed\n");
+		return (1);
+	}
 
 	if (jailparam_init(params, "path") != 0) {
 		if (*jail_errmsg != '\0') {
